@@ -47,7 +47,7 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             
-            Text("マイクが拾える音だけを認識します。端末内だけで再生される音は認識しづらいので、スピーカー再生や別端末再生を推奨します。")
+            Text("マイクが拾える音だけを認識します。認識精度を上げるには、別端末やスピーカーから再生した音を拾わせてください。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

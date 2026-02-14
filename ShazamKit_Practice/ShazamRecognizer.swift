@@ -10,6 +10,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         case idle
         case requestingPermission
         case listening
+        case recovering
         case matched
         case warning(String)
         case failed(String)
@@ -22,6 +23,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
                 return "マイク権限を確認中…"
             case .listening:
                 return "認識中…"
+            case .recovering:
+                return "認識が不安定なため再試行中…"
             case .matched:
                 return "曲を認識しました"
             case let .warning(message):
@@ -42,6 +45,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     private var session = SHSession()
     private var listeningStartedAt: Date?
     private var lastMatchAt: Date?
+    private var lastRecoveryAt: Date?
+    private var recoveryCount = 0
 
     private let pathMonitor = NWPathMonitor()
     private let pathMonitorQueue = DispatchQueue(label: "ShazamRecognizer.PathMonitor")
@@ -78,12 +83,16 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         if audioEngine.inputNode.numberOfInputs > 0 {
             audioEngine.inputNode.removeTap(onBus: 0)
         }
+
         audioEngine.stop()
         audioEngine.reset()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+
         isListening = false
         listeningStartedAt = nil
         lastMatchAt = nil
+        lastRecoveryAt = nil
+        recoveryCount = 0
         state = .idle
     }
 
@@ -107,6 +116,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             try audioEngine.start()
             listeningStartedAt = Date()
             lastMatchAt = nil
+            lastRecoveryAt = nil
+            recoveryCount = 0
             isListening = true
             state = .listening
             startRefreshLoop()
@@ -177,7 +188,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
             while let self, !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 12_000_000_000)
+                try? await Task.sleep(nanoseconds: 8_000_000_000)
                 guard !Task.isCancelled else { return }
                 await self.refreshRecognitionSessionIfNeeded()
             }
@@ -192,8 +203,46 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             return
         }
 
-        resetSession()
-        state = .listening
+        Task {
+            await hardRecoveryRestartIfNeeded(reason: "一定時間マッチしないため再接続")
+        }
+    }
+
+    private func hardRecoveryRestartIfNeeded(reason: String) async {
+        guard isListening else { return }
+        guard isNetworkReachable else { return }
+
+        let now = Date()
+        if let lastRecoveryAt, now.timeIntervalSince(lastRecoveryAt) < 8 {
+            return
+        }
+
+        lastRecoveryAt = now
+        recoveryCount += 1
+        state = .recovering
+
+        if audioEngine.inputNode.numberOfInputs > 0 {
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        audioEngine.stop()
+        audioEngine.reset()
+
+        do {
+            resetSession()
+            try configureAudioSession()
+            try installTap()
+            try audioEngine.start()
+            state = .listening
+        } catch {
+            state = .failed("再試行に失敗: \(error.localizedDescription)")
+            stopListening()
+        }
+
+        if recoveryCount >= 4 {
+            state = .warning("再試行を繰り返しています。音源を端末スピーカーで再生して、端末上部マイクを音源に近づけてください。")
+        }
+
+        _ = reason
     }
 
     private func resetSession() {
@@ -214,6 +263,7 @@ extension ShazamRecognizer: SHSessionDelegate {
             artistName = mediaItem?.artist ?? "不明"
             subtitleText = mediaItem?.subtitle ?? "サブタイトルなし"
             lastMatchAt = Date()
+            recoveryCount = 0
             state = .matched
         }
     }
@@ -235,7 +285,7 @@ extension ShazamRecognizer: SHSessionDelegate {
                         return
                     }
 
-                    state = .warning("認識結果の取得に時間がかかっています。周囲の音量を上げるか、曲のサビ部分でお試しください。")
+                    await hardRecoveryRestartIfNeeded(reason: "Shazam code 202")
                     return
                 }
 
@@ -244,7 +294,8 @@ extension ShazamRecognizer: SHSessionDelegate {
             }
 
             if elapsedListeningTime >= 10 {
-                state = .warning("まだ一致する曲が見つかっていません。音量を上げるか、端末を音源に近づけてください。")
+                state = .warning("まだ一致する曲が見つかっていません。再試行を続行中です。")
+                await hardRecoveryRestartIfNeeded(reason: "No match")
             } else {
                 state = .listening
             }

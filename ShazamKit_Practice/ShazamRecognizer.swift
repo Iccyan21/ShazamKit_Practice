@@ -1,175 +1,170 @@
-import AVFAudio
-import Foundation
+import AVFoundation
 import ShazamKit
 import Combine
+import Accelerate
 
 @MainActor
-final class ShazamRecognizer: NSObject, ObservableObject {
-    enum RecognitionState {
-        case idle
-        case requestingPermission
-        case listening
-        case matched
-        case warning(String)
-        case failed(String)
-
-        var description: String {
-            switch self {
-            case .idle:
-                return "待機中"
-            case .requestingPermission:
-                return "マイク権限を確認中…"
-            case .listening:
-                return "認識中…"
-            case .matched:
-                return "曲を認識しました"
-            case let .warning(message):
-                return "注意: \(message)"
-            case let .failed(message):
-                return "エラー: \(message)"
-            }
-        }
-    }
-
-    @Published private(set) var state: RecognitionState = .idle
-    @Published private(set) var songTitle = "-"
-    @Published private(set) var artistName = "-"
-    @Published private(set) var subtitleText = "-"
-    @Published private(set) var isListening = false
-
-    private let audioEngine = AVAudioEngine()
-    private let session = SHSession()
-    private var listeningStartedAt: Date?
-
+class MusicRecognizer: NSObject, ObservableObject {
+    @Published var status: RecognitionStatus = .idle
+    @Published var recognizedSong: RecognizedSong?
+    @Published var isRecording = false
+    @Published var errorMessage: String?
+    
+    private var audioEngine: AVAudioEngine?
+    private var session: SHSession?
+    private let signatureGenerator = SHSignatureGenerator()
+    
     override init() {
         super.init()
-        session.delegate = self
+        setupShazamSession()
+        setupAudioEngine()
     }
-
-    func toggleListening() {
-        if isListening {
-            stopListening()
-            return
-        }
-
-        Task {
-            await startListening()
+    
+    private func setupShazamSession() {
+        session = SHSession()
+        session?.delegate = self
+    }
+    
+    private func setupAudioEngine() {
+        audioEngine = AVAudioEngine()
+    }
+    
+    func startRecording() {
+        // マイク権限をリクエスト
+        AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
+            guard granted else {
+                Task { @MainActor in
+                    self?.errorMessage = "マイクへのアクセスが拒否されました"
+                    self?.status = .error
+                }
+                return
+            }
+            
+            Task { @MainActor in
+                self?.startListening()
+            }
         }
     }
-
-    func stopListening() {
-        if audioEngine.inputNode.numberOfInputs > 0 {
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
-        audioEngine.stop()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        isListening = false
-        listeningStartedAt = nil
-        state = .idle
-    }
-
-    private func startListening() async {
-        state = .requestingPermission
-
-        let permitted = await requestMicrophonePermission()
-        guard permitted else {
-            state = .failed("マイクの権限がありません。設定アプリで許可してください。")
-            return
-        }
-
+    
+    private func startListening() {
+        guard let audioEngine = audioEngine else { return }
+        
+        let audioSession = AVAudioSession.sharedInstance()
+        
         do {
-            try configureAudioSession()
-            try installTap()
-            try audioEngine.start()
-            listeningStartedAt = Date()
-            isListening = true
-            state = .listening
-        } catch {
-            stopListening()
-            state = .failed(error.localizedDescription)
-        }
-    }
-
-    private func requestMicrophonePermission() async -> Bool {
-        let avSession = AVAudioSession.sharedInstance()
-        switch avSession.recordPermission {
-        case .granted:
-            return true
-        case .denied:
-            return false
-        case .undetermined:
-            return await withCheckedContinuation { continuation in
-                avSession.requestRecordPermission { allowed in
-                    continuation.resume(returning: allowed)
+            try audioSession.setCategory(.record, mode: .measurement)
+            try audioSession.setActive(true)
+            
+            let inputNode = audioEngine.inputNode
+            let recordingFormat = inputNode.outputFormat(forBus: 0)
+            
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, time in
+                guard let self = self else { return }
+                
+                do {
+                    try self.signatureGenerator.append(buffer, at: time)
+                    
+                    // 音量チェック（デバッグ用）
+                    if let channelData = buffer.floatChannelData {
+                        var sum: Float = 0
+                        let frameCount = Int(buffer.frameLength)
+                        vDSP_meamgv(channelData[0], 1, &sum, vDSP_Length(frameCount))
+                        
+                        let avgPower = 20 * log10(sum)
+                        if avgPower > -80 {
+                            print("🔊 音声検出: \(avgPower) dB")
+                        }
+                    }
+                } catch {
+                    print("❌ エラー: \(error)")
                 }
             }
-        @unknown default:
-            return false
+            
+            audioEngine.prepare()
+            try audioEngine.start()
+            
+            self.isRecording = true
+            self.status = .recording
+            print("✅ マイク録音開始")
+            
+            // ★★★ 10秒ごとに認識（長くする） ★★★
+            Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] timer in
+                guard let self = self, self.isRecording else {
+                    timer.invalidate()
+                    return
+                }
+                
+                Task { @MainActor in
+                    self.tryRecognition()
+                }
+            }
+            
+        } catch {
+            errorMessage = "音声エンジン起動エラー: \(error.localizedDescription)"
+            status = .error
         }
     }
-
-    private func configureAudioSession() throws {
-        let avSession = AVAudioSession.sharedInstance()
-        try avSession.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .allowBluetooth, .defaultToSpeaker])
-        try avSession.setActive(true)
-    }
-
-    private func installTap() throws {
-        let inputNode = audioEngine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-
-        inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak self] buffer, audioTime in
-            self?.session.matchStreamingBuffer(buffer, at: audioTime)
+    
+    func stopRecording() {
+        audioEngine?.stop()
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        
+        do {
+            try AVAudioSession.sharedInstance().setActive(false)
+        } catch {
+            print("エラー: \(error)")
         }
-
-        songTitle = "-"
-        artistName = "-"
-        subtitleText = "-"
+        
+        isRecording = false
+        status = .idle
+        print("🛑 録音停止")
+    }
+    
+    private func tryRecognition() {
+        status = .recognizing
+        
+        Task {
+            do {
+                let signature = signatureGenerator.signature()
+                try await session?.match(signature)
+                print("✅ 認識リクエスト送信")
+            } catch {
+                errorMessage = "認識エラー: \(error.localizedDescription)"
+                status = .error
+            }
+        }
     }
 }
 
-extension ShazamRecognizer: SHSessionDelegate {
+extension MusicRecognizer: SHSessionDelegate {
     nonisolated func session(_ session: SHSession, didFind match: SHMatch) {
         Task { @MainActor in
-            let mediaItem = match.mediaItems.first
-            songTitle = mediaItem?.title ?? "不明"
-            artistName = mediaItem?.artist ?? "不明"
-            subtitleText = mediaItem?.subtitle ?? "サブタイトルなし"
-            state = .matched
+            guard let mediaItem = match.mediaItems.first else { return }
+            
+            print("🎉 曲を認識: \(mediaItem.title ?? "") - \(mediaItem.artist ?? "")")
+            
+            self.recognizedSong = RecognizedSong(
+                title: mediaItem.title ?? "不明なタイトル",
+                artist: mediaItem.artist ?? "不明なアーティスト",
+                album: mediaItem.subtitle,
+                appleMusicURL: mediaItem.appleMusicURL
+            )
+            
+            self.status = .success
         }
     }
-
-    nonisolated func session(_ session: SHSession, didNotFindMatchFor signature: SHSignature, error: (any Error)?) {
+    
+    nonisolated func session(_ session: SHSession, didNotFindMatchFor signature: SHSignature, error: Error?) {
         Task { @MainActor in
-            guard isListening else { return }
-
-            if let error {
-                let nsError = error as NSError
-                if nsError.domain == "com.apple.ShazamKit", nsError.code == 202 {
-                    // 認識開始直後に返ることがあるため即失敗にしない
-                    if elapsedListeningTime < 5 {
-                        state = .listening
-                        return
-                    }
-                    state = .warning("認識結果の取得に時間がかかっています。通信状態を確認して続行してください。")
-                    return
-                }
-
-                state = .failed(nsError.localizedDescription)
-                return
-            }
-
-            if elapsedListeningTime >= 10 {
-                state = .warning("まだ一致する曲が見つかっていません。音量を上げるか、端末を音源に近づけてください。")
+            if let error = error {
+                self.errorMessage = "認識失敗: \(error.localizedDescription)"
             } else {
-                state = .listening
+                self.errorMessage = "曲を認識できませんでした"
+            }
+            
+            if self.status == .recognizing {
+                self.status = .recording
             }
         }
-    }
-
-    private var elapsedListeningTime: TimeInterval {
-        guard let listeningStartedAt else { return 0 }
-        return Date().timeIntervalSince(listeningStartedAt)
     }
 }

@@ -1,74 +1,162 @@
-//
-//  ContentView.swift
-//  ShazamKit_Practice
-//
-//  Created by 水原樹 on 2026/02/15.
-//
-
 import SwiftUI
+import ShazamKit
+import ReplayKit
 
 struct ContentView: View {
-    @StateObject private var recognizer = ShazamRecognizer()
-
-    private var isListening: Bool { recognizer.isListening }
-
+    @StateObject private var recognizer = MusicRecognizer()
+    
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Shazam 認識モード")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(spacing: 30) {
+            Text("System Audio Recognizer")
+                .font(.largeTitle)
+                .fontWeight(.bold)
             
-            Text("Spotify/Apple Music認証なしで、周囲やスマホの再生音を認識します。")
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // 認識状態表示
+            StatusView(status: recognizer.status)
             
-            Label(recognizer.state.description, systemImage: "waveform")
-                .font(.headline)
-                .foregroundStyle(isListening ? .green : .primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                infoRow(title: "曲名", value: recognizer.songTitle)
-                infoRow(title: "アーティスト", value: recognizer.artistName)
-                infoRow(title: "サブタイトル", value: recognizer.subtitleText)
+            // 認識結果表示
+            if let result = recognizer.recognizedSong {
+                ResultView(song: result)
+            } else {
+                Text("認識された曲はありません")
+                    .foregroundColor(.gray)
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            
-            Button {
-                recognizer.toggleListening()
-            } label: {
-                Label(isListening ? "停止" : "認識開始", systemImage: isListening ? "stop.circle.fill" : "music.note")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
-            .buttonStyle(.borderedProminent)
-            
-            Text("イヤホン装着時でも、マイクで拾える音があれば認識可能です。\n(デバイスや音量により認識率は変わります)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
             
             Spacer()
+            
+            // コントロールボタン
+            if recognizer.isRecording {
+                Button(action: {
+                    recognizer.stopRecording()
+                }) {
+                    Label("停止", systemImage: "stop.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .frame(width: 200, height: 60)
+                        .background(Color.red)
+                        .cornerRadius(30)
+                }
+            } else {
+                Button(action: {
+                    recognizer.startRecording()
+                }) {
+                    Label("認識開始", systemImage: "waveform.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .frame(width: 200, height: 60)
+                        .background(Color.blue)
+                        .cornerRadius(30)
+                }
+            }
+            
+            Text("Spotify、YouTube Music等の\n再生中の曲を認識します")
+                .multilineTextAlignment(.center)
+                .font(.caption)
+                .foregroundColor(.gray)
+                .padding(.bottom, 40)
         }
         .padding()
     }
+}
+
+struct StatusView: View {
+    let status: RecognitionStatus
     
-    @ViewBuilder
-    private func infoRow(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.body)
-                .textSelection(.enabled)
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 12, height: 12)
+            
+            Text(statusText)
+                .font(.headline)
+        }
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(10)
+    }
+    
+    private var statusColor: Color {
+        switch status {
+        case .idle:
+            return .gray
+        case .recording:
+            return .red
+        case .recognizing:
+            return .orange
+        case .success:
+            return .green
+        case .error:
+            return .red
+        }
+    }
+    
+    private var statusText: String {
+        switch status {
+        case .idle:
+            return "待機中"
+        case .recording:
+            return "録音中..."
+        case .recognizing:
+            return "認識中..."
+        case .success:
+            return "認識成功！"
+        case .error:
+            return "エラー"
         }
     }
 }
+
+struct ResultView: View {
+    let song: RecognizedSong
+    
+    var body: some View {
+        VStack(spacing: 15) {
+            Text(song.title)
+                .font(.title)
+                .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+            
+            Text(song.artist)
+                .font(.title3)
+                .foregroundColor(.secondary)
+            
+            if let album = song.album {
+                Text(album)
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            
+            if let appleMusicURL = song.appleMusicURL {
+                Link("Apple Musicで開く", destination: appleMusicURL)
+                    .font(.caption)
+                    .padding(8)
+                    .background(Color.pink.opacity(0.1))
+                    .cornerRadius(8)
+            }
+        }
+        .padding()
+        .background(Color.blue.opacity(0.1))
+        .cornerRadius(15)
+    }
+}
+
+enum RecognitionStatus {
+    case idle
+    case recording
+    case recognizing
+    case success
+    case error
+}
+
+struct RecognizedSong: Identifiable {
+    let id = UUID()
+    let title: String
+    let artist: String
+    let album: String?
+    let appleMusicURL: URL?
+}
+
 #Preview {
     ContentView()
 }

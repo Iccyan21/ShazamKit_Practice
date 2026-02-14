@@ -6,14 +6,91 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		56C09B3E2F410AB00019D18F /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 56C09B3D2F410AB00019D18F /* ReplayKit.framework */; };
+		56C09B482F410AB00019D18F /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 56C09B3D2F410AB00019D18F /* ReplayKit.framework */; };
+		56C09B4A2F410AB00019D18F /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 56C09B492F410AB00019D18F /* UIKit.framework */; };
+		56C09B512F410AB00019D18F /* ShazamRecognizerSetupUI.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 56C09B472F410AB00019D18F /* ShazamRecognizerSetupUI.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		56C09B542F410AB00019D18F /* ShazamRecognizer.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 56C09B3B2F410AB00019D18F /* ShazamRecognizer.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		56C09B4F2F410AB00019D18F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56C09AFF2F40DA740019D18F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 56C09B462F410AB00019D18F;
+			remoteInfo = ShazamRecognizerSetupUI;
+		};
+		56C09B522F410AB00019D18F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56C09AFF2F40DA740019D18F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 56C09B3A2F410AB00019D18F;
+			remoteInfo = ShazamRecognizer;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		56C09B5D2F410AB00019D18F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				56C09B542F410AB00019D18F /* ShazamRecognizer.appex in Embed Foundation Extensions */,
+				56C09B512F410AB00019D18F /* ShazamRecognizerSetupUI.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		56C09B072F40DA740019D18F /* ShazamKit_Practice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShazamKit_Practice.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		56C09B3B2F410AB00019D18F /* ShazamRecognizer.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShazamRecognizer.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		56C09B3D2F410AB00019D18F /* ReplayKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ReplayKit.framework; path = System/Library/Frameworks/ReplayKit.framework; sourceTree = SDKROOT; };
+		56C09B472F410AB00019D18F /* ShazamRecognizerSetupUI.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShazamRecognizerSetupUI.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		56C09B492F410AB00019D18F /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		56C09B552F410AB00019D18F /* Exceptions for "ShazamRecognizer" folder in "ShazamRecognizer" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 56C09B3A2F410AB00019D18F /* ShazamRecognizer */;
+		};
+		56C09B592F410AB00019D18F /* Exceptions for "ShazamRecognizerSetupUI" folder in "ShazamRecognizerSetupUI" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 56C09B462F410AB00019D18F /* ShazamRecognizerSetupUI */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		56C09B092F40DA740019D18F /* ShazamKit_Practice */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ShazamKit_Practice;
+			sourceTree = "<group>";
+		};
+		56C09B3F2F410AB00019D18F /* ShazamRecognizer */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				56C09B552F410AB00019D18F /* Exceptions for "ShazamRecognizer" folder in "ShazamRecognizer" target */,
+			);
+			path = ShazamRecognizer;
+			sourceTree = "<group>";
+		};
+		56C09B4B2F410AB00019D18F /* ShazamRecognizerSetupUI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				56C09B592F410AB00019D18F /* Exceptions for "ShazamRecognizerSetupUI" folder in "ShazamRecognizerSetupUI" target */,
+			);
+			path = ShazamRecognizerSetupUI;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,6 +103,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		56C09B382F410AB00019D18F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				56C09B3E2F410AB00019D18F /* ReplayKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56C09B442F410AB00019D18F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				56C09B482F410AB00019D18F /* ReplayKit.framework in Frameworks */,
+				56C09B4A2F410AB00019D18F /* UIKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -33,6 +127,9 @@
 			isa = PBXGroup;
 			children = (
 				56C09B092F40DA740019D18F /* ShazamKit_Practice */,
+				56C09B3F2F410AB00019D18F /* ShazamRecognizer */,
+				56C09B4B2F410AB00019D18F /* ShazamRecognizerSetupUI */,
+				56C09B3C2F410AB00019D18F /* Frameworks */,
 				56C09B082F40DA740019D18F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +138,19 @@
 			isa = PBXGroup;
 			children = (
 				56C09B072F40DA740019D18F /* ShazamKit_Practice.app */,
+				56C09B3B2F410AB00019D18F /* ShazamRecognizer.appex */,
+				56C09B472F410AB00019D18F /* ShazamRecognizerSetupUI.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		56C09B3C2F410AB00019D18F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				56C09B3D2F410AB00019D18F /* ReplayKit.framework */,
+				56C09B492F410AB00019D18F /* UIKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -55,10 +163,13 @@
 				56C09B032F40DA740019D18F /* Sources */,
 				56C09B042F40DA740019D18F /* Frameworks */,
 				56C09B052F40DA740019D18F /* Resources */,
+				56C09B5D2F410AB00019D18F /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				56C09B502F410AB00019D18F /* PBXTargetDependency */,
+				56C09B532F410AB00019D18F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				56C09B092F40DA740019D18F /* ShazamKit_Practice */,
@@ -69,6 +180,50 @@
 			productName = ShazamKit_Practice;
 			productReference = 56C09B072F40DA740019D18F /* ShazamKit_Practice.app */;
 			productType = "com.apple.product-type.application";
+		};
+		56C09B3A2F410AB00019D18F /* ShazamRecognizer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56C09B562F410AB00019D18F /* Build configuration list for PBXNativeTarget "ShazamRecognizer" */;
+			buildPhases = (
+				56C09B372F410AB00019D18F /* Sources */,
+				56C09B382F410AB00019D18F /* Frameworks */,
+				56C09B392F410AB00019D18F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				56C09B3F2F410AB00019D18F /* ShazamRecognizer */,
+			);
+			name = ShazamRecognizer;
+			packageProductDependencies = (
+			);
+			productName = ShazamRecognizer;
+			productReference = 56C09B3B2F410AB00019D18F /* ShazamRecognizer.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		56C09B462F410AB00019D18F /* ShazamRecognizerSetupUI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56C09B5A2F410AB00019D18F /* Build configuration list for PBXNativeTarget "ShazamRecognizerSetupUI" */;
+			buildPhases = (
+				56C09B432F410AB00019D18F /* Sources */,
+				56C09B442F410AB00019D18F /* Frameworks */,
+				56C09B452F410AB00019D18F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				56C09B4B2F410AB00019D18F /* ShazamRecognizerSetupUI */,
+			);
+			name = ShazamRecognizerSetupUI;
+			packageProductDependencies = (
+			);
+			productName = ShazamRecognizerSetupUI;
+			productReference = 56C09B472F410AB00019D18F /* ShazamRecognizerSetupUI.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +236,12 @@
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					56C09B062F40DA740019D18F = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					56C09B3A2F410AB00019D18F = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					56C09B462F410AB00019D18F = {
 						CreatedOnToolsVersion = 26.2;
 					};
 				};
@@ -100,12 +261,28 @@
 			projectRoot = "";
 			targets = (
 				56C09B062F40DA740019D18F /* ShazamKit_Practice */,
+				56C09B3A2F410AB00019D18F /* ShazamRecognizer */,
+				56C09B462F410AB00019D18F /* ShazamRecognizerSetupUI */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		56C09B052F40DA740019D18F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56C09B392F410AB00019D18F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56C09B452F410AB00019D18F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +299,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		56C09B372F410AB00019D18F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56C09B432F410AB00019D18F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		56C09B502F410AB00019D18F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 56C09B462F410AB00019D18F /* ShazamRecognizerSetupUI */;
+			targetProxy = 56C09B4F2F410AB00019D18F /* PBXContainerItemProxy */;
+		};
+		56C09B532F410AB00019D18F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 56C09B3A2F410AB00019D18F /* ShazamRecognizer */;
+			targetProxy = 56C09B522F410AB00019D18F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		56C09B102F40DA750019D18F /* Debug */ = {
@@ -252,9 +456,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3BMCK6R5WG;
+				DEVELOPMENT_TEAM = HB2C2JWPK5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "ShazamKit-Practice-Info.plist";
@@ -269,8 +474,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.ShazamKit-Practice";
+				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.shazam-practice";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -287,9 +493,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3BMCK6R5WG;
+				DEVELOPMENT_TEAM = HB2C2JWPK5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "ShazamKit-Practice-Info.plist";
@@ -304,11 +511,128 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.ShazamKit-Practice";
+				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.shazam-practice";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		56C09B572F410AB00019D18F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HB2C2JWPK5;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShazamRecognizer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShazamRecognizer;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.shazam-practice.ShazamRecognizer";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		56C09B582F410AB00019D18F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HB2C2JWPK5;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShazamRecognizer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShazamRecognizer;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.shazam-practice.ShazamRecognizer";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		56C09B5B2F410AB00019D18F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HB2C2JWPK5;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShazamRecognizerSetupUI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShazamRecognizerSetupUI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.shazam-practice.ShazamRecognizerSetupUI";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		56C09B5C2F410AB00019D18F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HB2C2JWPK5;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShazamRecognizerSetupUI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShazamRecognizerSetupUI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "iccyan.shazam-practice.ShazamRecognizerSetupUI";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -333,6 +657,24 @@
 			buildConfigurations = (
 				56C09B132F40DA750019D18F /* Debug */,
 				56C09B142F40DA750019D18F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		56C09B562F410AB00019D18F /* Build configuration list for PBXNativeTarget "ShazamRecognizer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56C09B572F410AB00019D18F /* Debug */,
+				56C09B582F410AB00019D18F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		56C09B5A2F410AB00019D18F /* Build configuration list for PBXNativeTarget "ShazamRecognizerSetupUI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56C09B5B2F410AB00019D18F /* Debug */,
+				56C09B5C2F410AB00019D18F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

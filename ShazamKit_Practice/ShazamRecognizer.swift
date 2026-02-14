@@ -21,19 +21,24 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             case .idle:
                 return "待機中"
             case .requestingPermission:
-                return "マイク権限を確認中…"
+                return "権限を確認中…"
             case .listening:
                 return "認識中…"
             case .recovering:
                 return "認識が不安定なため再試行中…"
             case .matched:
-                return "曲を認識しました"
+                return "曲を取得しました"
             case let .warning(message):
                 return "注意: \(message)"
             case let .failed(message):
                 return "エラー: \(message)"
             }
         }
+    }
+
+    private enum CaptureMode {
+        case hybrid
+        case fallbackOnly
     }
 
     @Published private(set) var state: RecognitionState = .idle
@@ -48,6 +53,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     private var lastMatchAt: Date?
     private var lastRecoveryAt: Date?
     private var recoveryCount = 0
+    private var mode: CaptureMode = .hybrid
 
     private var fallbackNowPlayingTask: Task<Void, Never>?
     private var lastFallbackTrackID = ""
@@ -101,24 +107,28 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         lastRecoveryAt = nil
         recoveryCount = 0
         lastFallbackTrackID = ""
+        mode = .hybrid
         state = .idle
     }
 
     private func startListening() async {
         state = .requestingPermission
 
-        guard isNetworkReachable else {
-            state = .failed("インターネット接続がありません。通信状態を確認してから再試行してください。")
+        let micPermitted = await requestMicrophonePermission()
+        startNowPlayingFallbackLoop()
+
+        guard micPermitted else {
+            startFallbackOnlyMode(reason: "マイク未許可のため、端末の再生情報のみで取得します。")
             return
         }
 
-        let permitted = await requestMicrophonePermission()
-        guard permitted else {
-            state = .failed("マイクの権限がありません。設定アプリで許可してください。")
+        guard isNetworkReachable else {
+            startFallbackOnlyMode(reason: "オフラインのため、端末の再生情報のみで取得します。")
             return
         }
 
         do {
+            mode = .hybrid
             try configureAudioSession()
             try installTap()
             try audioEngine.start()
@@ -129,11 +139,19 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             isListening = true
             state = .listening
             startRefreshLoop()
-            startNowPlayingFallbackLoop()
         } catch {
-            stopListening()
-            state = .failed(error.localizedDescription)
+            startFallbackOnlyMode(reason: "Shazam認識の初期化に失敗したため、端末の再生情報のみで取得します。")
         }
+    }
+
+    private func startFallbackOnlyMode(reason: String) {
+        mode = .fallbackOnly
+        isListening = true
+        listeningStartedAt = Date()
+        lastMatchAt = nil
+        lastRecoveryAt = nil
+        recoveryCount = 0
+        state = .warning(reason)
     }
 
     private func requestMicrophonePermission() async -> Bool {
@@ -182,9 +200,10 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             Task { @MainActor in
                 self.isNetworkReachable = path.status == .satisfied
                 guard self.isListening else { return }
+                guard self.mode == .hybrid else { return }
 
                 if self.isNetworkReachable == false {
-                    self.state = .warning("オフラインのため認識できません。通信状態が復旧するまで待機します。")
+                    self.state = .warning("オフラインに切り替わりました。端末の再生情報取得を継続します。")
                 } else if case .warning = self.state {
                     self.state = .listening
                 }
@@ -221,7 +240,6 @@ final class ShazamRecognizer: NSObject, ObservableObject {
 
         let title = (info[MPMediaItemPropertyTitle] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let artist = (info[MPMediaItemPropertyArtist] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
         guard !title.isEmpty else { return }
 
         let playbackRate = info[MPNowPlayingInfoPropertyPlaybackRate] as? Double ?? 1
@@ -235,11 +253,13 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         artistName = artist.isEmpty ? "不明" : artist
         subtitleText = "端末の再生情報から取得（Fallback）"
         lastMatchAt = Date()
+        recoveryCount = 0
         state = .matched
     }
 
     private func refreshRecognitionSessionIfNeeded() {
         guard isListening else { return }
+        guard mode == .hybrid else { return }
         guard elapsedListeningTime > 15 else { return }
 
         if let lastMatchAt, Date().timeIntervalSince(lastMatchAt) < 12 {
@@ -253,7 +273,11 @@ final class ShazamRecognizer: NSObject, ObservableObject {
 
     private func hardRecoveryRestartIfNeeded() async {
         guard isListening else { return }
-        guard isNetworkReachable else { return }
+        guard mode == .hybrid else { return }
+        guard isNetworkReachable else {
+            state = .warning("Shazam通信不可のため、端末の再生情報取得を継続します。")
+            return
+        }
 
         let now = Date()
         if let lastRecoveryAt, now.timeIntervalSince(lastRecoveryAt) < 8 {
@@ -277,12 +301,12 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             try audioEngine.start()
             state = .listening
         } catch {
-            state = .failed("再試行に失敗: \(error.localizedDescription)")
-            stopListening()
+            mode = .fallbackOnly
+            state = .warning("Shazam再試行に失敗。端末の再生情報のみで取得を継続します。")
         }
 
         if recoveryCount >= 4 {
-            state = .warning("再試行中です。Spotify等を再生中なら、数秒後に端末再生情報(Fallback)からも補完を試みます。")
+            state = .warning("Shazamが不安定です。端末再生情報(Fallback)の取得を優先して継続します。")
         }
     }
 
@@ -302,7 +326,7 @@ extension ShazamRecognizer: SHSessionDelegate {
             let mediaItem = match.mediaItems.first
             songTitle = mediaItem?.title ?? "不明"
             artistName = mediaItem?.artist ?? "不明"
-            subtitleText = mediaItem?.subtitle ?? "サブタイトルなし"
+            subtitleText = mediaItem?.subtitle ?? "Shazamで取得"
             lastMatchAt = Date()
             recoveryCount = 0
             state = .matched
@@ -312,9 +336,14 @@ extension ShazamRecognizer: SHSessionDelegate {
     nonisolated func session(_ session: SHSession, didNotFindMatchFor signature: SHSignature, error: (any Error)?) {
         Task { @MainActor in
             guard isListening else { return }
+            guard mode == .hybrid else { return }
+
+            if let lastMatchAt, Date().timeIntervalSince(lastMatchAt) < 3 {
+                return
+            }
 
             if isNetworkReachable == false {
-                state = .warning("通信がオフラインです。接続後にそのまま認識を続行します。")
+                state = .warning("通信がオフラインです。端末再生情報での補完を継続します。")
                 return
             }
 
@@ -330,12 +359,12 @@ extension ShazamRecognizer: SHSessionDelegate {
                     return
                 }
 
-                state = .failed(nsError.localizedDescription)
+                state = .warning("Shazamでエラー発生。端末再生情報での補完を継続します。")
                 return
             }
 
             if elapsedListeningTime >= 10 {
-                state = .warning("一致する曲が見つかっていません。再試行と端末再生情報の補完を続行します。")
+                state = .warning("Shazam一致なし。端末再生情報での補完を継続しつつ再試行します。")
                 await hardRecoveryRestartIfNeeded()
             } else {
                 state = .listening

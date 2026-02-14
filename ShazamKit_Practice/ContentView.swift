@@ -35,7 +35,8 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 8) {
                 infoRow(title: "曲名", value: recognizer.songTitle)
                 infoRow(title: "アーティスト", value: recognizer.artistName)
-                infoRow(title: "Shazam URL", value: recognizer.shazamURLText)
+                infoRow(title: "サブタイトル", value: recognizer.subtitleText)
+
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)

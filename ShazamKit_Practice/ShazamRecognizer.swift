@@ -33,7 +33,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     @Published private(set) var state: RecognitionState = .idle
     @Published private(set) var songTitle = "-"
     @Published private(set) var artistName = "-"
-    @Published private(set) var shazamURLText = "-"
+    @Published private(set) var subtitleText = "-"
 
     private let audioEngine = AVAudioEngine()
     private let session = SHSession()
@@ -118,7 +118,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
 
         songTitle = "-"
         artistName = "-"
-        shazamURLText = "-"
+        subtitleText = "-"
+
     }
 }
 
@@ -128,7 +129,8 @@ extension ShazamRecognizer: SHSessionDelegate {
             let mediaItem = match.mediaItems.first
             songTitle = mediaItem?.title ?? "不明"
             artistName = mediaItem?.artist ?? "不明"
-            shazamURLText = mediaItem?.shazamURL?.absoluteString ?? "URLなし"
+            subtitleText = mediaItem?.subtitle ?? "サブタイトルなし"
+
             state = .matched
         }
     }

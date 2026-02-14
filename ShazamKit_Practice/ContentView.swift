@@ -36,7 +36,6 @@ struct ContentView: View {
                 infoRow(title: "曲名", value: recognizer.songTitle)
                 infoRow(title: "アーティスト", value: recognizer.artistName)
                 infoRow(title: "サブタイトル", value: recognizer.subtitleText)
-
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)

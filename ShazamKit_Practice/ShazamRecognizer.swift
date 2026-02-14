@@ -119,7 +119,6 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         songTitle = "-"
         artistName = "-"
         subtitleText = "-"
-
     }
 }
 
@@ -130,7 +129,6 @@ extension ShazamRecognizer: SHSessionDelegate {
             songTitle = mediaItem?.title ?? "不明"
             artistName = mediaItem?.artist ?? "不明"
             subtitleText = mediaItem?.subtitle ?? "サブタイトルなし"
-
             state = .matched
         }
     }
@@ -138,10 +136,21 @@ extension ShazamRecognizer: SHSessionDelegate {
     nonisolated func session(_ session: SHSession, didNotFindMatchFor signature: SHSignature, error: (any Error)?) {
         Task { @MainActor in
             if let error {
-                state = .failed(error.localizedDescription)
+                state = .failed(friendlyErrorMessage(from: error))
+
             } else {
                 state = .noMatch
             }
         }
+    }
+
+    private func friendlyErrorMessage(from error: any Error) -> String {
+        let nsError = error as NSError
+
+        if nsError.domain == "com.apple.ShazamKit", nsError.code == 202 {
+            return "ShazamKitエラー202: Music Recognition capability が未設定の可能性があります。Signing & CapabilitiesでShazamKitを有効化し、実機で再インストールしてください。"
+        }
+
+        return nsError.localizedDescription
     }
 }

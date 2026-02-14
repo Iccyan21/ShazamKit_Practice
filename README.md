@@ -14,3 +14,11 @@ ShazamKit を使って「Shazam 認識モード」っぽい動作を試すため
 4. スマホや周辺で音楽を再生して認識結果を待つ
 
 > イヤホン利用時でも、端末マイクに音が届く環境なら認識できます。
+
+## トラブルシュート
+- `com.apple.ShazamKit error 202` が出る場合は、
+  - Target > Signing & Capabilities で **ShazamKit (Music Recognition)** を有効化
+  - 実機に再インストール
+  - ネットワーク接続を確認
+ してください。
+

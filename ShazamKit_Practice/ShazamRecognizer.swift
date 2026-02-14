@@ -1,6 +1,7 @@
 import AVFAudio
 import Foundation
 import ShazamKit
+import Combine
 
 @MainActor
 final class ShazamRecognizer: NSObject, ObservableObject {
@@ -9,7 +10,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         case requestingPermission
         case listening
         case matched
-        case noMatch
+        case warning(String)
         case failed(String)
 
         var description: String {
@@ -22,8 +23,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
                 return "認識中…"
             case .matched:
                 return "曲を認識しました"
-            case .noMatch:
-                return "一致する曲が見つかりませんでした"
+            case let .warning(message):
+                return "注意: \(message)"
             case let .failed(message):
                 return "エラー: \(message)"
             }
@@ -34,9 +35,11 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     @Published private(set) var songTitle = "-"
     @Published private(set) var artistName = "-"
     @Published private(set) var subtitleText = "-"
+    @Published private(set) var isListening = false
 
     private let audioEngine = AVAudioEngine()
     private let session = SHSession()
+    private var listeningStartedAt: Date?
 
     override init() {
         super.init()
@@ -44,14 +47,13 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     }
 
     func toggleListening() {
-        switch state {
-        case .listening:
+        if isListening {
             stopListening()
-            state = .idle
-        default:
-            Task {
-                await startListening()
-            }
+            return
+        }
+
+        Task {
+            await startListening()
         }
     }
 
@@ -61,6 +63,9 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         }
         audioEngine.stop()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        isListening = false
+        listeningStartedAt = nil
+        state = .idle
     }
 
     private func startListening() async {
@@ -76,6 +81,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             try configureAudioSession()
             try installTap()
             try audioEngine.start()
+            listeningStartedAt = Date()
+            isListening = true
             state = .listening
         } catch {
             stopListening()
@@ -135,22 +142,34 @@ extension ShazamRecognizer: SHSessionDelegate {
 
     nonisolated func session(_ session: SHSession, didNotFindMatchFor signature: SHSignature, error: (any Error)?) {
         Task { @MainActor in
-            if let error {
-                state = .failed(friendlyErrorMessage(from: error))
+            guard isListening else { return }
 
+            if let error {
+                let nsError = error as NSError
+                if nsError.domain == "com.apple.ShazamKit", nsError.code == 202 {
+                    // 認識開始直後に返ることがあるため即失敗にしない
+                    if elapsedListeningTime < 5 {
+                        state = .listening
+                        return
+                    }
+                    state = .warning("認識結果の取得に時間がかかっています。通信状態を確認して続行してください。")
+                    return
+                }
+
+                state = .failed(nsError.localizedDescription)
+                return
+            }
+
+            if elapsedListeningTime >= 10 {
+                state = .warning("まだ一致する曲が見つかっていません。音量を上げるか、端末を音源に近づけてください。")
             } else {
-                state = .noMatch
+                state = .listening
             }
         }
     }
 
-    private func friendlyErrorMessage(from error: any Error) -> String {
-        let nsError = error as NSError
-
-        if nsError.domain == "com.apple.ShazamKit", nsError.code == 202 {
-            return "ShazamKitエラー202: Music Recognition capability が未設定の可能性があります。Signing & CapabilitiesでShazamKitを有効化し、実機で再インストールしてください。"
-        }
-
-        return nsError.localizedDescription
+    private var elapsedListeningTime: TimeInterval {
+        guard let listeningStartedAt else { return 0 }
+        return Date().timeIntervalSince(listeningStartedAt)
     }
 }

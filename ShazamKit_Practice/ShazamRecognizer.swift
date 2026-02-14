@@ -119,6 +119,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         songTitle = "-"
         artistName = "-"
         subtitleText = "-"
+
     }
 }
 
@@ -129,6 +130,7 @@ extension ShazamRecognizer: SHSessionDelegate {
             songTitle = mediaItem?.title ?? "不明"
             artistName = mediaItem?.artist ?? "不明"
             subtitleText = mediaItem?.subtitle ?? "サブタイトルなし"
+
             state = .matched
         }
     }

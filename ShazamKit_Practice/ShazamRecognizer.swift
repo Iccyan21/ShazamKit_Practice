@@ -137,6 +137,7 @@ extension ShazamRecognizer: SHSessionDelegate {
         Task { @MainActor in
             if let error {
                 state = .failed(friendlyErrorMessage(from: error))
+
             } else {
                 state = .noMatch
             }

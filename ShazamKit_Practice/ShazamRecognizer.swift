@@ -1,6 +1,7 @@
 import AVFAudio
 import Combine
 import Foundation
+import MediaPlayer
 import Network
 import ShazamKit
 
@@ -48,6 +49,9 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     private var lastRecoveryAt: Date?
     private var recoveryCount = 0
 
+    private var fallbackNowPlayingTask: Task<Void, Never>?
+    private var lastFallbackTrackID = ""
+
     private let pathMonitor = NWPathMonitor()
     private let pathMonitorQueue = DispatchQueue(label: "ShazamRecognizer.PathMonitor")
     private var isNetworkReachable = true
@@ -63,6 +67,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     deinit {
         pathMonitor.cancel()
         refreshTask?.cancel()
+        fallbackNowPlayingTask?.cancel()
     }
 
     func toggleListening() {
@@ -79,6 +84,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
     func stopListening() {
         refreshTask?.cancel()
         refreshTask = nil
+        fallbackNowPlayingTask?.cancel()
+        fallbackNowPlayingTask = nil
 
         if audioEngine.inputNode.numberOfInputs > 0 {
             audioEngine.inputNode.removeTap(onBus: 0)
@@ -93,6 +100,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         lastMatchAt = nil
         lastRecoveryAt = nil
         recoveryCount = 0
+        lastFallbackTrackID = ""
         state = .idle
     }
 
@@ -121,6 +129,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             isListening = true
             state = .listening
             startRefreshLoop()
+            startNowPlayingFallbackLoop()
         } catch {
             stopListening()
             state = .failed(error.localizedDescription)
@@ -195,6 +204,40 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         }
     }
 
+    private func startNowPlayingFallbackLoop() {
+        fallbackNowPlayingTask?.cancel()
+        fallbackNowPlayingTask = Task { [weak self] in
+            while let self, !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                guard !Task.isCancelled else { return }
+                await self.consumeNowPlayingFallbackIfNeeded()
+            }
+        }
+    }
+
+    private func consumeNowPlayingFallbackIfNeeded() {
+        guard isListening else { return }
+        guard let info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+
+        let title = (info[MPMediaItemPropertyTitle] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let artist = (info[MPMediaItemPropertyArtist] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard !title.isEmpty else { return }
+
+        let playbackRate = info[MPNowPlayingInfoPropertyPlaybackRate] as? Double ?? 1
+        guard playbackRate > 0 else { return }
+
+        let trackID = "\(title)|\(artist)"
+        guard trackID != lastFallbackTrackID else { return }
+
+        lastFallbackTrackID = trackID
+        songTitle = title
+        artistName = artist.isEmpty ? "不明" : artist
+        subtitleText = "端末の再生情報から取得（Fallback）"
+        lastMatchAt = Date()
+        state = .matched
+    }
+
     private func refreshRecognitionSessionIfNeeded() {
         guard isListening else { return }
         guard elapsedListeningTime > 15 else { return }
@@ -204,11 +247,11 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         }
 
         Task {
-            await hardRecoveryRestartIfNeeded(reason: "一定時間マッチしないため再接続")
+            await hardRecoveryRestartIfNeeded()
         }
     }
 
-    private func hardRecoveryRestartIfNeeded(reason: String) async {
+    private func hardRecoveryRestartIfNeeded() async {
         guard isListening else { return }
         guard isNetworkReachable else { return }
 
@@ -239,10 +282,8 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         }
 
         if recoveryCount >= 4 {
-            state = .warning("再試行を繰り返しています。音源を端末スピーカーで再生して、端末上部マイクを音源に近づけてください。")
+            state = .warning("再試行中です。Spotify等を再生中なら、数秒後に端末再生情報(Fallback)からも補完を試みます。")
         }
-
-        _ = reason
     }
 
     private func resetSession() {
@@ -285,7 +326,7 @@ extension ShazamRecognizer: SHSessionDelegate {
                         return
                     }
 
-                    await hardRecoveryRestartIfNeeded(reason: "Shazam code 202")
+                    await hardRecoveryRestartIfNeeded()
                     return
                 }
 
@@ -294,8 +335,8 @@ extension ShazamRecognizer: SHSessionDelegate {
             }
 
             if elapsedListeningTime >= 10 {
-                state = .warning("まだ一致する曲が見つかっていません。再試行を続行中です。")
-                await hardRecoveryRestartIfNeeded(reason: "No match")
+                state = .warning("一致する曲が見つかっていません。再試行と端末再生情報の補完を続行します。")
+                await hardRecoveryRestartIfNeeded()
             } else {
                 state = .listening
             }

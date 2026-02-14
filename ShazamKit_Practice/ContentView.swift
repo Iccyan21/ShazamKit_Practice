@@ -18,7 +18,7 @@ struct ContentView: View {
                 .font(.largeTitle.bold())
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            Text("Spotify/Apple Music認証なしで、周囲やスマホの再生音を認識します。ネット接続がない場合は認識できません。")
+            Text("Spotify/Apple Music認証なしで、周囲やスマホの再生音を認識します。Shazamと端末の再生情報を併用して取得します。")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -47,7 +47,7 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             
-            Text("マイクが拾える音だけを認識します。認識精度を上げるには、別端末やスピーカーから再生した音を拾わせてください。")
+            Text("まずShazamで認識し、失敗時は端末の再生情報(Fallback)でも取得を試みます。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

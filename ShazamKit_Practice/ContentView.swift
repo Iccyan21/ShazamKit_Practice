@@ -18,7 +18,7 @@ struct ContentView: View {
                 .font(.largeTitle.bold())
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            Text("Spotify/Apple Music認証なしで、Shazam認識 + 端末の再生情報(Fallback)で曲情報を取得します。")
+            Text("Shazam認識が不安定でも、端末の再生情報(Fallback)に自動切替して取得を継続します。")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -47,7 +47,7 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             
-            Text("マイク未許可やShazam失敗時でも、再生情報(Fallback)があれば曲名取得を継続します。")
+            Text("再生中の曲情報が見えない場合は、Spotify/Apple Musicで実際に再生中か確認してください。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

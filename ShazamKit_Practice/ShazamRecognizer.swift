@@ -23,9 +23,9 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             case .requestingPermission:
                 return "権限を確認中…"
             case .listening:
-                return "認識中…"
+                return "取得中…"
             case .recovering:
-                return "認識が不安定なため再試行中…"
+                return "Shazamを再接続中…"
             case .matched:
                 return "曲を取得しました"
             case let .warning(message):
@@ -93,13 +93,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         fallbackNowPlayingTask?.cancel()
         fallbackNowPlayingTask = nil
 
-        if audioEngine.inputNode.numberOfInputs > 0 {
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
-
-        audioEngine.stop()
-        audioEngine.reset()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        teardownAudioPipeline()
 
         isListening = false
         listeningStartedAt = nil
@@ -118,12 +112,12 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         startNowPlayingFallbackLoop()
 
         guard micPermitted else {
-            startFallbackOnlyMode(reason: "マイク未許可のため、端末の再生情報のみで取得します。")
+            startFallbackOnlyMode(reason: "マイク未許可のため、再生情報(Fallback)のみで取得します。")
             return
         }
 
         guard isNetworkReachable else {
-            startFallbackOnlyMode(reason: "オフラインのため、端末の再生情報のみで取得します。")
+            startFallbackOnlyMode(reason: "オフラインのため、再生情報(Fallback)のみで取得します。")
             return
         }
 
@@ -140,18 +134,36 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             state = .listening
             startRefreshLoop()
         } catch {
-            startFallbackOnlyMode(reason: "Shazam認識の初期化に失敗したため、端末の再生情報のみで取得します。")
+            startFallbackOnlyMode(reason: "Shazam初期化に失敗したため、再生情報(Fallback)のみで取得します。")
         }
     }
 
     private func startFallbackOnlyMode(reason: String) {
         mode = .fallbackOnly
+        refreshTask?.cancel()
+        refreshTask = nil
+        teardownAudioPipeline()
+
         isListening = true
         listeningStartedAt = Date()
-        lastMatchAt = nil
         lastRecoveryAt = nil
         recoveryCount = 0
-        state = .warning(reason)
+
+        // 警告固定ではなく「動作継続中」を優先
+        state = .listening
+        if subtitleText == "-" || subtitleText == "" {
+            subtitleText = reason
+        }
+    }
+
+    private func teardownAudioPipeline() {
+        if audioEngine.inputNode.numberOfInputs > 0 {
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+
+        audioEngine.stop()
+        audioEngine.reset()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private func requestMicrophonePermission() async -> Bool {
@@ -200,11 +212,13 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             Task { @MainActor in
                 self.isNetworkReachable = path.status == .satisfied
                 guard self.isListening else { return }
-                guard self.mode == .hybrid else { return }
 
-                if self.isNetworkReachable == false {
-                    self.state = .warning("オフラインに切り替わりました。端末の再生情報取得を継続します。")
-                } else if case .warning = self.state {
+                if self.mode == .hybrid, self.isNetworkReachable == false {
+                    self.startFallbackOnlyMode(reason: "通信断のため、再生情報(Fallback)へ自動切替しました。")
+                    return
+                }
+
+                if self.mode == .fallbackOnly, self.isNetworkReachable, self.lastFallbackTrackID.isEmpty {
                     self.state = .listening
                 }
             }
@@ -230,6 +244,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 guard !Task.isCancelled else { return }
                 await self.consumeNowPlayingFallbackIfNeeded()
+                await self.updateWaitingHintIfNeeded()
             }
         }
     }
@@ -257,6 +272,17 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         state = .matched
     }
 
+    private func updateWaitingHintIfNeeded() {
+        guard isListening else { return }
+        guard lastFallbackTrackID.isEmpty else { return }
+        guard let listeningStartedAt else { return }
+
+        let elapsed = Date().timeIntervalSince(listeningStartedAt)
+        if elapsed > 20 {
+            state = .warning("再生中の曲情報がまだ取得できません。Spotify/Apple Musicで曲を再生して数秒お待ちください。")
+        }
+    }
+
     private func refreshRecognitionSessionIfNeeded() {
         guard isListening else { return }
         guard mode == .hybrid else { return }
@@ -275,7 +301,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         guard isListening else { return }
         guard mode == .hybrid else { return }
         guard isNetworkReachable else {
-            state = .warning("Shazam通信不可のため、端末の再生情報取得を継続します。")
+            startFallbackOnlyMode(reason: "Shazam通信不可のため、再生情報(Fallback)へ切替しました。")
             return
         }
 
@@ -288,11 +314,7 @@ final class ShazamRecognizer: NSObject, ObservableObject {
         recoveryCount += 1
         state = .recovering
 
-        if audioEngine.inputNode.numberOfInputs > 0 {
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
-        audioEngine.stop()
-        audioEngine.reset()
+        teardownAudioPipeline()
 
         do {
             resetSession()
@@ -301,12 +323,12 @@ final class ShazamRecognizer: NSObject, ObservableObject {
             try audioEngine.start()
             state = .listening
         } catch {
-            mode = .fallbackOnly
-            state = .warning("Shazam再試行に失敗。端末の再生情報のみで取得を継続します。")
+            startFallbackOnlyMode(reason: "Shazam再試行に失敗。再生情報(Fallback)へ切替しました。")
+            return
         }
 
-        if recoveryCount >= 4 {
-            state = .warning("Shazamが不安定です。端末再生情報(Fallback)の取得を優先して継続します。")
+        if recoveryCount >= 3 {
+            startFallbackOnlyMode(reason: "Shazam不安定のため、再生情報(Fallback)優先へ自動切替しました。")
         }
     }
 
@@ -338,12 +360,13 @@ extension ShazamRecognizer: SHSessionDelegate {
             guard isListening else { return }
             guard mode == .hybrid else { return }
 
-            if let lastMatchAt, Date().timeIntervalSince(lastMatchAt) < 3 {
+            // 直近でFallback/Shazam問わず成功した直後は警告で上書きしない
+            if let lastMatchAt, Date().timeIntervalSince(lastMatchAt) < 4 {
                 return
             }
 
             if isNetworkReachable == false {
-                state = .warning("通信がオフラインです。端末再生情報での補完を継続します。")
+                startFallbackOnlyMode(reason: "通信断のため、再生情報(Fallback)へ切替しました。")
                 return
             }
 
@@ -359,12 +382,12 @@ extension ShazamRecognizer: SHSessionDelegate {
                     return
                 }
 
-                state = .warning("Shazamでエラー発生。端末再生情報での補完を継続します。")
+                // Shazam単体の失敗で停止しない
+                await hardRecoveryRestartIfNeeded()
                 return
             }
 
             if elapsedListeningTime >= 10 {
-                state = .warning("Shazam一致なし。端末再生情報での補完を継続しつつ再試行します。")
                 await hardRecoveryRestartIfNeeded()
             } else {
                 state = .listening

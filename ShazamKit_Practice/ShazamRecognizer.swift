@@ -52,7 +52,12 @@ class MusicRecognizer: NSObject, ObservableObject {
         let audioSession = AVAudioSession.sharedInstance()
         
         do {
-            try audioSession.setCategory(.record, mode: .measurement)
+            // ★★★ ここを修正 ★★★
+            try audioSession.setCategory(
+                .playAndRecord,
+                mode: .measurement,
+                options: [.defaultToSpeaker, .mixWithOthers]
+            )
             try audioSession.setActive(true)
             
             let inputNode = audioEngine.inputNode
@@ -66,11 +71,17 @@ class MusicRecognizer: NSObject, ObservableObject {
                     
                     // 音量チェック（デバッグ用）
                     if let channelData = buffer.floatChannelData {
-                        var sum: Float = 0
                         let frameCount = Int(buffer.frameLength)
-                        vDSP_meamgv(channelData[0], 1, &sum, vDSP_Length(frameCount))
+                        var maxAmplitude: Float = 0
                         
-                        let avgPower = 20 * log10(sum)
+                        for i in 0..<frameCount {
+                            let sample = abs(channelData[0][i])
+                            if sample > maxAmplitude {
+                                maxAmplitude = sample
+                            }
+                        }
+                        
+                        let avgPower = 20 * log10(maxAmplitude + 0.0001)
                         if avgPower > -80 {
                             print("🔊 音声検出: \(avgPower) dB")
                         }
@@ -85,9 +96,8 @@ class MusicRecognizer: NSObject, ObservableObject {
             
             self.isRecording = true
             self.status = .recording
-            print("✅ マイク録音開始")
+            print("✅ マイク録音開始（Spotify再生継続）")
             
-            // ★★★ 10秒ごとに認識（長くする） ★★★
             Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] timer in
                 guard let self = self, self.isRecording else {
                     timer.invalidate()
